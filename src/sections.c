@@ -298,15 +298,6 @@ sec_context(sbuf_t *sb, const payload_t *pay, const config_t *cfg)
 
   if(!pay->has_context) return;
 
-  usedsv.p = used;
-  usedsv.n = u64_grouped(used, sizeof used, pay->ctx_used, cfg->thousands);
-
-  if(pay->ctx_ceiling)
-  {
-    ceilsv.p = ceil;
-    ceilsv.n = u64_grouped(ceil, sizeof ceil, pay->ctx_ceiling, cfg->thousands);
-  }
-
   if(pay->has_pct) pctsv = fmt_pct(pctb, sizeof pctb, pay->ctx_pct);
 
   else if(pay->ctx_ceiling)
@@ -319,8 +310,23 @@ sec_context(sbuf_t *sb, const payload_t *pay, const config_t *cfg)
   }
 
   add_tok(&ts, SEC_CONTEXT, cfg, "label", cfg->sec[SEC_CONTEXT].label);
-  add_tok(&ts, SEC_CONTEXT, cfg, "used", usedsv);
-  add_tok(&ts, SEC_CONTEXT, cfg, "ceiling", ceilsv);
+
+  // Basic skips the counts entirely; the swallow rule takes the "/" with them.
+  if(!cfg->basic)
+  {
+    usedsv.p = used;
+    usedsv.n = u64_grouped(used, sizeof used, pay->ctx_used, cfg->thousands);
+
+    if(pay->ctx_ceiling)
+    {
+      ceilsv.p = ceil;
+      ceilsv.n = u64_grouped(ceil, sizeof ceil, pay->ctx_ceiling, cfg->thousands);
+    }
+
+    add_tok(&ts, SEC_CONTEXT, cfg, "used", usedsv);
+    add_tok(&ts, SEC_CONTEXT, cfg, "ceiling", ceilsv);
+  }
+
   add_tok(&ts, SEC_CONTEXT, cfg, "pct", pctsv);
   run_fmt(sb, SEC_CONTEXT, cfg, &ts);
 }
@@ -337,7 +343,8 @@ sec_plan(sbuf_t *sb, const payload_t *pay, const config_t *cfg,
 
   if(!w->present) return;
 
-  if(w->has_resets)
+  // Basic leaves the reset out; the swallow rule takes the " ↻" with it.
+  if(w->has_resets && !cfg->basic)
   {
     switch(cfg->sec[id].resets)
     {

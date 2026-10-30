@@ -10,7 +10,7 @@
 ![heap allocations: 0](https://img.shields.io/badge/heap_allocations-0-f38ba8)
 ![fuzzed: 3.3M execs](https://img.shields.io/badge/fuzzed-3.3M_execs-89dceb)
 
-<img src="assets/screenshot.svg" alt="dccstatusline in a terminal: default theme and a customized theme" width="860">
+<img src="assets/screenshot.svg" alt="dccstatusline in a terminal: default theme and a customized theme" width="960">
 
 </div>
 
@@ -34,8 +34,15 @@ zero forks, zero heap allocations, one write, exit 0.
   counting down to the reset (`↻04:12`) or showing its local time in 24- or
   12-hour form; the sections are window-agnostic, so if the windows ever
   change, your config doesn't
+- 🎚️ **profiles** — `profile = basic` keeps just the percentages
+  (`ctx 43% │ 5h 24%`); the default, `detailed`, adds the token counts and the
+  reset times
 - 🎨 **per-element color** — every token of every section takes its own
   foreground and background: 16 ANSI names, 256-palette numbers, or `#rrggbb`
+- 🌈 **themes** — `theme = nord` restyles the whole line in one key:
+  catppuccin, nord, gruvbox, tokyonight, dracula, onedark, rosepine,
+  kanagawa, or solarized; `dccstatusline --themes` prints them side by side,
+  and `/dccstatusline:theme` picks one with the arrow keys
 - 🧩 **format templates** — reorder and repunctuate each section freely;
   a token with nothing to show swallows the punctuation before it, so
   `{name} {ver} ·{effort}` degrades to `Fable 5`, never to `Fable 5 ·`
@@ -159,7 +166,7 @@ sections  = cwd git model context plan_short plan_long
 separator = " │ "
 
 [git]
-format    = "⎇ {branch}"
+format    = {branch}         # no ⎇ before the branch
 branch_fg = #a6e3a1          # truecolor needs no quoting
 
 [context]
@@ -187,6 +194,38 @@ max_len = 28                       # and never longer than 28 characters
 
 Every section also has `{label}`, filled from its `label =` key, and takes
 `fg`/`bg` for its literal text plus `<token>_fg` / `<token>_bg` per token.
+
+### Themes
+
+Ten presets ship in the binary — `default`, `catppuccin` (Mocha), `nord`,
+`gruvbox` (dark), `tokyonight`, `dracula`, `onedark` (Atom One Dark),
+`rosepine`, `kanagawa` (Wave), and `solarized` (dark). The last five take
+their colors from Ghostty's themes of the same name. Each named preset uses
+three of its theme's colors and one gray: one for the directory and branch,
+one for the model, one for the usage figures, and the gray for the rest. A
+preset sets colors only: each keeps the default `│` separator and glyphs,
+and never changes which sections show or how the cwd is shortened. Pick one
+with a single key:
+
+```ini
+[statusline]
+theme = nord
+
+[cwd]
+fg = red                           # keys after the theme line win over it
+```
+
+The preset applies where its line sits, so keep it first, and tweak it with
+keys below. A config copied whole from `--print-config` restates every color
+and paints over any theme, so delete the color keys you didn't change.
+`dccstatusline --themes` prints every preset side by side, and
+`--themes "<ini>"` lays INI keys over each one first. With the plugin,
+`/dccstatusline:theme` shows every preset in color and switches your status
+line to the one you pick. Its separator, glyphs and profile rows start at what
+your config sets and change every preset at once: the glyphs row turns off the
+`⎇` before the branch and the `↻` before the reset times, and the profile row
+switches to basic. The presets use `#rrggbb` colors, so they look right only in
+a truecolor terminal.
 
 ### Keeping the cwd short
 

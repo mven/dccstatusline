@@ -1,6 +1,6 @@
 ---
 name: configure
-description: Customize dccstatusline, however it was installed. When dccstatusline is the active status line, use this instead of the built-in status line setup whenever the user wants to change their status line's colors, sections, order, separator, formats, cwd shortening, or reset-time style, or asks what it can show.
+description: Customize dccstatusline, however it was installed. When dccstatusline is the active status line, use this instead of the built-in status line setup whenever the user wants to change their status line's colors, sections, order, separator, formats, profile (basic or detailed), cwd shortening, or reset-time style, or asks what it can show.
 ---
 
 # Configure dccstatusline
@@ -9,6 +9,9 @@ dccstatusline reads one INI file. The plugin does not manage that file, so it
 survives plugin updates and uninstalls. The reader skips unknown keys and
 sections without a word, and a bad value silently keeps its default. Because
 of that, every change is previewed before it is applied.
+
+To try or pick one of the preset themes, use `/dccstatusline:theme` instead.
+It shows each preset in color and applies the one you pick.
 
 ## 0. Find the active dccstatusline binary
 

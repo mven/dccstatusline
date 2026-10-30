@@ -25,6 +25,7 @@
 static size_t stdin_drain(void);
 static bool write_all(const char *, size_t);
 static bool want_git(const config_t *);
+static bool print_themes(const char *);
 
 static char stdin_buf[64 * 1024];
 static char config_buf[32 * 1024];
@@ -93,6 +94,65 @@ want_git(const config_t *cfg)
   return(false);
 }
 
+// Every preset over the compiled defaults, one sample line each, so they can be
+// compared side by side. The user's config stays out of it: this shows the
+// themes as shipped, with only the overlay on top — INI text laid over each
+// preset as if it sat below the theme line. The clock is fixed too — the
+// countdowns measure against the same instant the sample resets were built from.
+static bool
+print_themes(const char *overlay)
+{
+  const int64_t now = 1738411200;
+  const payload_t pay =
+  {
+    .has_cwd = true,
+    .cwd = sv_from_cstr("~/src/acme"),
+    .has_model = true,
+    .model_name = sv_from_cstr("Opus"),
+    .model_id = sv_from_cstr("claude-opus-5-5"),
+    .effort = sv_from_cstr("high"),
+    .has_context = true,
+    .ctx_used = 87333,
+    .ctx_ceiling = 200000,
+    .plan =
+    {
+      [PLAN_SHORT] = { true, true, 24, now + 9000, sv_from_cstr("5h") },
+      [PLAN_LONG]  = { true, true, 41, now + 302400, sv_from_cstr("7d") },
+    },
+  };
+  const gitinfo_t git = { true, "main", 4, 0 };
+  const size_t on = strlen(overlay);
+  const char *name;
+  size_t i;
+
+  if(on > sizeof config_buf) return(false);
+
+  for(i = 0; (name = config_theme_name(i)); i++)
+  {
+    config_t cfg;
+    sbuf_t line;
+    char label[32];
+    const int n = snprintf(label, sizeof label, "%-12s", name);
+
+    config_defaults(&cfg);
+
+    // The name is the table's own: only a preset outgrowing its buffer fails.
+    if(!config_theme(&cfg, sv_from_cstr(name))) return(false);
+
+    memcpy(config_buf, overlay, on);   // the loader writes as it parses
+    config_load(&cfg, config_buf, on);
+    sbuf_init(&line, line_mem, sizeof line_mem, 5);   // tail: reset + newline
+    statusline_render(&line, &pay, &cfg, &git, now);
+    sbuf_append_tail(&line, "\x1b[0m\n", 5);
+
+    if(n < 0 || (size_t)n >= sizeof label
+       || !write_all(label, (size_t)n) || !write_all(line.p, line.len))
+      return(false);
+  }
+
+  return(true);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -112,6 +172,9 @@ main(int argc, char **argv)
   if(argc > 1 && strcmp(argv[1], "--print-config") == 0)
     return(write_all((const char *)reference_config,
                      sizeof reference_config) ? 0 : 1);
+
+  if(argc > 1 && strcmp(argv[1], "--themes") == 0)
+    return(print_themes(argc > 2 ? argv[2] : "") ? 0 : 1);
 
   signal(SIGPIPE, SIG_IGN);   // a cancelled in-flight refresh must not kill us
 

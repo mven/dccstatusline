@@ -37,10 +37,10 @@ behind `#ifdef <MODULE>_INTERNAL`, `.c` files hold function bodies only.
 
 | module | knows about | responsibility |
 |---|---|---|
-| `main.c` | orchestration | flow above; `--version`; sole includer of generated `version.h` |
+| `main.c` | orchestration | flow above; `--version`, `--print-config`, `--themes`; sole includer of generated `version.h` |
 | `json.c` | JSON, nothing else | pull cursor: enter object, iterate keys, read scalars; **iterative** skip of any value with depth cap 64; in-place string unescape |
 | `payload.c` | Claude Code's schema | drives `json` over known key paths → `payload_t` (string views, numbers, `has_*` flags); best-effort partial fill |
-| `config.c` | the INI dialect | file → `config_t` overlaying compiled defaults; per-key tolerance; owns the defaults table |
+| `config.c` | the INI dialect | file → `config_t` overlaying compiled defaults; per-key tolerance; owns the defaults and theme tables |
 | `color.c` | terminal color | `color_t {none, named16, idx256, rgb}`: parse `bright_cyan` / `208` / `#ff8700`; SGR emission |
 | `fmt.c` | templates | renders a format string against a token table `{name, value, fg, bg}` |
 | `sections.c` | the six sections | producers build token tables from `payload_t` (+ gitinfo) and call `fmt`; `statusline_render` assembles the line |
@@ -93,8 +93,22 @@ bad value means that key keeps its default (one stderr note, visible in `claude 
 
 INI dialect: `[section]`, `key = value`, `#` comments, quoted values for significant
 whitespace (`separator = " │ "`), UTF-8 passed through as bytes, unknown sections and
-keys ignored (forward compatibility). `[statusline]` holds `sections` (order list),
-`separator` (+ `separator_fg/bg`), `thousands`.
+keys ignored (forward compatibility). `[statusline]` holds `theme` (a preset), `profile`
+(`detailed` or `basic`), `sections` (order list), `separator` (+ `separator_fg/bg`),
+`thousands`. Basic leaves the `used`, `ceiling` and `resets` tokens out of the tokset, so
+the swallow rule drops the text before each in any format.
+
+Themes are compiled-in INI text, colors only, kept in a table beside the
+defaults. `theme = name` feeds that text through the same loader at the line where it
+sits, so keys after it override the preset and keys before it are overridden. The loader
+writes into its buffer (quoted values collapse in place) and the resulting views alias
+it, so the text is first copied into a static buffer in `config_theme`; only the first
+`theme` key naming a known preset counts, so that buffer is never refilled under live
+views. `--themes` renders every preset over the defaults with a fixed sample payload
+and clock, ignoring the user's config, so it shows the presets as shipped. An optional
+second argument is INI text laid over each preset as if it sat below the theme line,
+which is how the plugin's picker previews its separator, glyphs and profile options; it
+borrows the config buffer, unused on that path, and is copied in afresh per preset.
 
 ## Buffers
 

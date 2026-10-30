@@ -49,6 +49,8 @@ writes the setting. Re-running it updates the binary in place.
    - The defaults need no config file. To customize colors, sections, or the
      cwd, they can ask for a change in plain words or run
      `/dccstatusline:configure`.
+   - To see the preset themes in color and pick one, they can run
+     `/dccstatusline:theme`.
    - Running `/dccstatusline:setup` again updates the binary.
    - Uninstalling the plugin deletes the binary, so they should then remove
      `statusLine` from that settings file.

@@ -60,7 +60,7 @@ config_defaults(config_t *cfg)
   sc->fg = named16(12);             // bright_blue
 
   sc = &cfg->sec[SEC_GIT];
-  sc->format = sv_from_cstr("{branch}");
+  sc->format = sv_from_cstr("\xe2\x8e\x87 {branch}");   // "⎇ {branch}"
   sc->fg = named16(10);             // bright_green
 
   sc = &cfg->sec[SEC_MODEL];
@@ -209,9 +209,36 @@ parse_order(config_t *cfg, sv_t value)
 }
 
 static void
+set_theme(config_t *cfg, sv_t value)
+{
+  if(cfg->themed)
+    fprintf(stderr, "dccstatusline: config: theme already set, ignored: %.*s\n",
+            (int)value.n, value.p);
+
+  else if(!config_theme(cfg, value))
+    fprintf(stderr, "dccstatusline: config: unknown theme: %.*s\n",
+            (int)value.n, value.p);
+}
+
+static void
+set_profile(config_t *cfg, sv_t value)
+{
+  if(sv_eq_cstr(value, "basic")) cfg->basic = true;
+
+  else if(sv_eq_cstr(value, "detailed")) cfg->basic = false;
+
+  else fprintf(stderr, "dccstatusline: config: bad profile: %.*s\n",
+               (int)value.n, value.p);
+}
+
+static void
 set_global(config_t *cfg, sv_t key, sv_t value)
 {
-  if(sv_eq_cstr(key, "sections")) parse_order(cfg, value);
+  if(sv_eq_cstr(key, "theme")) set_theme(cfg, value);
+
+  else if(sv_eq_cstr(key, "profile")) set_profile(cfg, value);
+
+  else if(sv_eq_cstr(key, "sections")) parse_order(cfg, value);
 
   else if(sv_eq_cstr(key, "separator")) cfg->separator = value;
 
@@ -409,6 +436,42 @@ config_load(config_t *cfg, char *buf, size_t n)
     handle_line(cfg, &cur, buf + pos, len);
     pos += raw + 1;
   }
+}
+
+// The preset's text is copied out because config_load writes as it parses
+// (quoted values collapse in place) and its views must outlive the render.
+// One buffer serves every preset, so a second theme would pull the first one's
+// views out from under it: themed makes the first one final.
+bool
+config_theme(config_t *cfg, sv_t name)
+{
+  static char buf[4096];
+  size_t i;
+
+  for(i = 0; i < sizeof themes / sizeof themes[0]; i++)
+  {
+    size_t n;
+
+    if(!sv_eq_cstr(name, themes[i].name)) continue;
+
+    n = strlen(themes[i].ini);
+
+    if(n > sizeof buf) return(false);
+
+    cfg->themed = true;
+    memcpy(buf, themes[i].ini, n);
+    config_load(cfg, buf, n);
+
+    return(true);
+  }
+
+  return(false);
+}
+
+const char *
+config_theme_name(size_t i)
+{
+  return(i < sizeof themes / sizeof themes[0] ? themes[i].name : NULL);
 }
 
 bool

@@ -33,6 +33,7 @@ static void test_ver_table(void);
 static void test_ver_suppression(void);
 static void test_resets_styles(void);
 static void test_resets_default(void);
+static void test_profile_basic(void);
 static void test_cwd_styles(void);
 static void test_ansi_exact(void);
 
@@ -146,7 +147,7 @@ test_full_line(void)
   plain(&cfg);
   render_plain(&pay, &cfg, &git, out, &n);
   CHECK_MEM(out, n,
-            "~/proj \xe2\x94\x82 main \xe2\x94\x82 Fable 5 \xc2\xb7max \xe2\x94\x82 "
+            "~/proj \xe2\x94\x82 \xe2\x8e\x87 main \xe2\x94\x82 Fable 5 \xc2\xb7max \xe2\x94\x82 "
             "ctx 16,700/200,000 8% \xe2\x94\x82 5h 24% \xe2\x94\x82 7d 41%");
 }
 
@@ -373,6 +374,31 @@ test_resets_default(void)
   CHECK_MEM(out, n, "5h 24% \xe2\x86\xbb""02:05");
 }
 
+// Basic drops the counts and the resets, whatever the format: the swallow rule
+// takes the "/" and the " ↻" with them.
+static void
+test_profile_basic(void)
+{
+  config_t cfg;
+  payload_t pay = sample();
+  const gitinfo_t nogit = { false, "", 0, 0 };
+  char ini[] =
+    "[statusline]\nsections = context plan_short plan_long\nprofile = basic\n";
+  char out[256];
+  size_t n;
+
+  pay.plan[PLAN_SHORT].has_resets = true;
+  pay.plan[PLAN_SHORT].resets_at = TEST_NOW + 4 * H + 12 * M;
+  pay.plan[PLAN_LONG].has_resets = true;
+  pay.plan[PLAN_LONG].resets_at = TEST_NOW + 3 * D + 19 * H + 47 * M;
+
+  config_defaults(&cfg);
+  plain(&cfg);
+  config_load(&cfg, ini, sizeof ini - 1);
+  render_plain(&pay, &cfg, &nogit, out, &n);
+  CHECK_MEM(out, n, "ctx 8% \xe2\x94\x82 5h 24% \xe2\x94\x82 7d 41%");
+}
+
 static void
 test_cwd_styles(void)
 {
@@ -448,7 +474,7 @@ test_ansi_exact(void)
   config_load(&cfg, ini, sizeof ini - 1);
   sbuf_init(&sb, mem, sizeof mem, 0);
   statusline_render(&sb, &pay, &cfg, &git, TEST_NOW);
-  CHECK_MEM(sb.p, sb.len, "\x1b[0;92mmain");
+  CHECK_MEM(sb.p, sb.len, "\x1b[0;92m\xe2\x8e\x87 \x1b[0;92mmain");   // "⎇ main"
 }
 
 int
@@ -461,6 +487,7 @@ main(void)
   test_ver_suppression();
   test_resets_styles();
   test_resets_default();
+  test_profile_basic();
   test_cwd_styles();
   test_ansi_exact();
 
